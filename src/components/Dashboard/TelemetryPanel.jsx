@@ -35,36 +35,36 @@ const TelemetryPanel = () => {
         {/* Atmosphere Metric */}
         <div className="data-row">
           <label>Atmosphere CO₂</label>
-          <value>{metrics.atmosphere.co2} ppm</value>
+          <value>{metrics.atmosphere?.co2 ?? 420} ppm</value>
         </div>
         <div className="data-row">
           <label>Thermal Dissipation</label>
-          <value style={{ color: metrics.crustTemp > 300 ? '#ff6b45' : 'inherit' }}>
-            {metrics.crustTemp.toFixed(1)} K
+          <value style={{ color: (metrics.crustTemp ?? 288) > 300 ? '#ff6b45' : 'inherit' }}>
+            {(metrics.crustTemp ?? 288).toFixed(1)} K
           </value>
         </div>
         {/* Solar Metrics (Expanded) */}
         <div className="data-row">
           <label>Solar Flare Class</label>
-          <value style={{ color: metrics.solar.class.startsWith('X') ? '#ff6b45' : metrics.solar.class.startsWith('M') ? '#ffaa00' : 'inherit' }}>
-            {metrics.solar.class} ({metrics.solar.flux.toExponential(1)})
+          <value style={{ color: metrics.solar?.class?.startsWith('X') ? '#ff6b45' : metrics.solar?.class?.startsWith('M') ? '#ffaa00' : 'inherit' }}>
+            {metrics.solar?.class || 'A'} ({metrics.solar?.flux ? metrics.solar.flux.toExponential(1) : '0'})
           </value>
         </div>
         <div className="data-row">
           <label>Solar Wind Speed</label>
-          <value>{metrics.solar.windSpeed} km/s</value>
+          <value>{metrics.solar?.windSpeed ?? 0} km/s</value>
         </div>
         <div className="data-row">
           <label>Proton Storm Level</label>
-          <value style={{ color: metrics.solar.protonLevel !== 'None' ? '#ff6b45' : 'inherit' }}>
-            {metrics.solar.protonLevel}
+          <value style={{ color: metrics.solar?.protonLevel && metrics.solar.protonLevel !== 'None' ? '#ff6b45' : 'inherit' }}>
+            {metrics.solar?.protonLevel || 'None'}
           </value>
         </div>
         {/* Seismic Event */}
         <div className="data-row">
           <label>Last Seismic Event</label>
           <value style={{ fontSize: '0.85rem', textAlign: 'right', lineHeight: '1.3' }}>
-            {metrics.lastSeismicEvent.label}
+            {metrics.lastSeismicEvent?.label || 'Waiting...'}
           </value>
         </div>
       </div>

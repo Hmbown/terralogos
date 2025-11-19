@@ -12,7 +12,7 @@ const IonosphereCooling = ({
   const matRef = useRef();
   
   // Subscribe to store for CO2 data
-  const co2 = useHVCStore((state) => state.metrics.atmosphere.co2);
+  const co2 = useHVCStore((state) => state.metrics.atmosphere?.co2 ?? 420);
   
   // Calculate radius
   const outerRadius = crustRadius + atmosphereDepth;

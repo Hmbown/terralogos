@@ -64,7 +64,11 @@ const ResonanceChamber = ({ active }) => {
   // --- HANDLE MUTE/UNMUTE ---
   useEffect(() => {
     if (active) {
-      Tone.start();
+      // Only start audio context after user interaction (button click)
+      // This prevents the AudioContext warnings
+      Tone.start().catch((err) => {
+        console.warn('[AUDIO] Failed to start audio context:', err);
+      });
       Tone.Destination.mute = false;
       
       // Start Generators
@@ -84,7 +88,7 @@ const ResonanceChamber = ({ active }) => {
 
     // A. SOLAR MODULATION
     // Wind speed (300 - 800 km/s) maps to Filter Freq & Modulation
-    const wind = metrics.solar.windSpeed || 400;
+    const wind = metrics.solar?.windSpeed || 400;
     const normWind = Math.min(Math.max((wind - 300) / 500, 0), 1);
     
     if (solarFilter.current) {
@@ -98,7 +102,7 @@ const ResonanceChamber = ({ active }) => {
 
     // B. ATMOSPHERE MODULATION
     // CO2 / Temp maps to Noise volume/density
-    const temp = metrics.crustTemp || 300; // Kelvin
+    const temp = metrics.crustTemp ?? 300; // Kelvin
     // Hotter = Louder, more agitated noise
     const normTemp = Math.min(Math.max((temp - 273) / 50, 0), 1);
     
@@ -111,7 +115,7 @@ const ResonanceChamber = ({ active }) => {
 
     // C. SEISMIC TRIGGERS
     const currentLabel = metrics.lastSeismicEvent?.label;
-    const intensity = metrics.lastSeismicEvent?.intensity || 0;
+    const intensity = metrics.lastSeismicEvent?.intensity ?? 0;
 
     if (currentLabel !== prevSeismicLabel.current) {
         // New Event Detected!
