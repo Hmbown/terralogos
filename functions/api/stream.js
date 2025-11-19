@@ -1,6 +1,5 @@
 import {
-  gatherTelemetrySnapshot,
-  persistSnapshot,
+  getTelemetry,
   readLatestSnapshot,
   formatSseMessage,
 } from '../_utils/telemetry';
@@ -27,14 +26,15 @@ export function onRequest(context) {
       const pushSnapshot = async () => {
         if (cancelled) return;
         try {
-          const snapshot = await gatherTelemetrySnapshot();
-          await persistSnapshot(env, snapshot).catch(() => {});
+          // Use smart getter with caching/resilience
+          const snapshot = await getTelemetry(env);
           send('snapshot', snapshot);
         } catch (err) {
           send('error', { message: err?.message || 'Telemetry collection failed' });
         }
       };
 
+      // Send initial cached state immediately if available (fast render)
       readLatestSnapshot(env)
         .then((cached) => {
           if (cached) {
@@ -44,6 +44,7 @@ export function onRequest(context) {
         .catch(() => {});
 
       send('status', { message: 'STREAM_ONLINE', intervalMs });
+      // Start polling immediately (will use cache if fresh)
       pushSnapshot();
 
       const pollId = setInterval(pushSnapshot, intervalMs);

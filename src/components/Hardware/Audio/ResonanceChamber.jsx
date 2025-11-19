@@ -18,6 +18,7 @@ const ResonanceChamber = ({ active }) => {
   const solarDrone = useRef(null); // FM Synth
   const solarFilter = useRef(null);
   const seismicSynth = useRef(null); // PolySynth
+  const seismicPanner = useRef(null); // Spatial Panner
   const atmosNoise = useRef(null); // Pink Noise
   const atmosFilter = useRef(null);
   const reverbRef = useRef(null);
@@ -45,10 +46,18 @@ const ResonanceChamber = ({ active }) => {
 
     // 3. Seismic Voice (Transient pings)
     reverbRef.current = new Tone.Reverb(3).connect(limiter);
+    
+    // Spatial Panner for Seismic Hits
+    seismicPanner.current = new Tone.Panner3D({
+      panningModel: 'HRTF',
+      refDistance: 2,
+      rolloffFactor: 0.5,
+    }).connect(reverbRef.current);
+
     seismicSynth.current = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "triangle" },
       envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 1 }
-    }).connect(reverbRef.current);
+    }).connect(seismicPanner.current);
     seismicSynth.current.volume.value = -5;
 
     // 4. Atmosphere Haze (Background Texture)
@@ -82,6 +91,10 @@ const ResonanceChamber = ({ active }) => {
       if (reverbRef.current) {
         reverbRef.current.dispose();
         reverbRef.current = null;
+      }
+      if (seismicPanner.current) {
+        seismicPanner.current.dispose();
+        seismicPanner.current = null;
       }
       if (masterGain.current) {
         masterGain.current.dispose();
@@ -153,10 +166,17 @@ const ResonanceChamber = ({ active }) => {
     // C. SEISMIC TRIGGERS
     const currentLabel = metrics.lastSeismicEvent?.label;
     const intensity = metrics.lastSeismicEvent?.intensity ?? 0;
+    const pos = metrics.lastSeismicEvent?.pos || [1, 0, 0];
 
     if (currentLabel !== prevSeismicLabel.current) {
         // New Event Detected!
         prevSeismicLabel.current = currentLabel;
+        
+        // Update Spatial Position
+        if (seismicPanner.current) {
+          // Position sound source in 3D space relative to listener (center)
+          seismicPanner.current.setPosition(pos[0], pos[1], pos[2]);
+        }
         
         // Map intensity (0-1) to Pitch
         // Low intensity = High pitch ping

@@ -4,7 +4,7 @@ const NOAA_XRAY_URL = 'https://services.swpc.noaa.gov/json/goes/primary/xrays-7-
 const NOAA_SOLAR_WIND_URL = 'https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json';
 const NOAA_PROTON_URL = 'https://services.swpc.noaa.gov/json/goes/primary/integral-protons-plot-1-day.json';
 const USGS_VOLCANO_URL = 'https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes';
-const NOAA_CO2_URL = 'https://gml.noaa.gov/web/data/co2/trends/co2_mlo_weekly.csv';
+const NOAA_CO2_URL = 'https://scrippsco2.ucsd.edu/assets/data/atmospheric/stations/in_situ_co2/weekly/weekly_in_situ_co2_mlo.csv';
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast?latitude=19.54&longitude=-155.58&current=temperature_2m';
 
 const GLOBE_RADIUS = 4.2;
@@ -345,17 +345,79 @@ export async function persistSnapshot(env, snapshot) {
 
 export async function readLatestSnapshot(env) {
   if (!env || !env.TERRA_DB) return null;
-  const row = await env.TERRA_DB.prepare(
-    'SELECT payload FROM metric_cache WHERE key = ?'
-  )
-    .bind('latest')
-    .first();
-  if (!row || !row.payload) return null;
   try {
-    return JSON.parse(row.payload);
+    const row = await env.TERRA_DB.prepare(
+      'SELECT payload, updated_at FROM metric_cache WHERE key = ?'
+    )
+      .bind('latest')
+      .first();
+      
+    if (!row || !row.payload) return null;
+    
+    const data = JSON.parse(row.payload);
+    // Ensure timestamp is preserved from the cache record if missing in payload (though it should be there)
+    if (!data.timestamp && row.updated_at) {
+        data.timestamp = row.updated_at;
+    }
+    return data;
   } catch (err) {
     console.warn('[D1] SNAPSHOT PARSE FAILURE', err);
     return null;
+  }
+}
+
+/**
+ * Smart Telemetry Getter:
+ * 1. Checks D1 cache for fresh data (< 60s).
+ * 2. If fresh, returns cached data (saving API quota).
+ * 3. If stale, fetches new data, updates D1, and returns it.
+ * 4. If fetch fails, returns stale data (Resilience).
+ */
+export async function getTelemetry(env) {
+  const CACHE_TTL_MS = 60000; // 1 minute
+  
+  // 1. Try Cache
+  let cached = null;
+  try {
+    cached = await readLatestSnapshot(env);
+  } catch (e) {
+    console.warn('[TELEMETRY] D1 Read Error', e);
+  }
+
+  const now = Date.now();
+  let isFresh = false;
+
+  if (cached && cached.timestamp) {
+    const cacheTime = new Date(cached.timestamp).getTime();
+    if (now - cacheTime < CACHE_TTL_MS) {
+      isFresh = true;
+    }
+  }
+
+  if (isFresh) {
+    return cached;
+  }
+
+  // 2. Fetch New
+  try {
+    console.log('[TELEMETRY] Cache stale, refreshing...');
+    const snapshot = await gatherTelemetrySnapshot();
+    
+    // 3. Persist
+    // Don't await this if we want speed, but we need to ensure it runs. 
+    // Context.waitUntil() is not available here directly unless passed.
+    // We'll await for safety to prevent concurrent race conditions slightly (though not fully).
+    await persistSnapshot(env, snapshot);
+    
+    return snapshot;
+  } catch (err) {
+    console.error('[TELEMETRY] Fetch Failed:', err);
+    // 4. Fallback to Stale
+    if (cached) {
+      console.log('[TELEMETRY] Serving stale data due to fetch failure.');
+      return { ...cached, _meta: { status: 'stale', error: err.message } };
+    }
+    throw err; // No data available at all
   }
 }
 

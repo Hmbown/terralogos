@@ -18,9 +18,13 @@ vi.mock('../../core/store/useHVCStore', () => ({
   }
 }));
 
-// Mock Canvas to not render children (avoiding light primitive errors)
+// Mock Canvas and hooks
 vi.mock('@react-three/fiber', () => ({
-  Canvas: () => <div data-testid="canvas-mock" />
+  Canvas: ({ children }) => <div data-testid="canvas-mock">{children}</div>,
+  useFrame: () => {},
+  useLoader: () => [],
+  useThree: () => ({ gl: { capabilities: { getMaxAnisotropy: () => 8 } } }),
+  extend: () => {},
 }));
 
 // Mock Drei components
@@ -28,9 +32,19 @@ vi.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
   Stars: () => null,
   PerspectiveCamera: () => null,
+  shaderMaterial: () => class {},
+}));
+
+// Mock XR
+vi.mock('@react-three/xr', () => ({
+  createXRStore: () => ({ enterVR: vi.fn() }),
+  XR: ({ children }) => <div data-testid="xr-mock">{children}</div>,
 }));
 
 // Mock child components
+vi.mock('../Hardware/EarthBase/EarthGlobe', () => ({ default: () => <div data-testid="earth-globe">Earth Globe</div> }));
+vi.mock('../Hardware/EarthBase/GridLines', () => ({ default: () => null }));
+
 vi.mock('./LiveDataPanel', () => ({
   default: () => <div data-testid="live-data-panel">Live Data Panel</div>
 }));
@@ -53,6 +67,7 @@ vi.mock('../Hardware/MantleBus/WaveGuide', () => ({ default: () => null }));
 vi.mock('../Hardware/CrustInterface/PiezoHead', () => ({ default: () => null }));
 vi.mock('../Hardware/CrustInterface/VolcanicVents', () => ({ default: () => null }));
 vi.mock('../Hardware/AtmosphereSink/IonosphereCooling', () => ({ default: () => null }));
+vi.mock('../Hardware/EarthBase/AuroraBorealis', () => ({ default: () => null }));
 vi.mock('../Hardware/Audio/ResonanceChamber', () => ({ default: () => null }));
 
 describe('MainDashboard', () => {
@@ -76,6 +91,6 @@ describe('MainDashboard', () => {
   
   it('shows audio toggle control', () => {
     render(<MainDashboard />);
-    expect(screen.getByText(/Audio: OFF/i)).toBeInTheDocument();
+    expect(screen.getByText(/Enable Earth Voice/i)).toBeInTheDocument();
   });
 });

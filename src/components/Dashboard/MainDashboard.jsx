@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
 import { Suspense } from 'react';
+import { createXRStore, XR } from '@react-three/xr';
 import useHVCStore from '../../core/store/useHVCStore';
 import { useEarthVoice } from '../../core/hooks/useEarthVoice';
 
@@ -14,6 +15,7 @@ import PiezoHead from '../Hardware/CrustInterface/PiezoHead';
 import SeismicMarker from '../Hardware/CrustInterface/SeismicMarker';
 import VolcanicVents from '../Hardware/CrustInterface/VolcanicVents';
 import IonosphereCooling from '../Hardware/AtmosphereSink/IonosphereCooling';
+import AuroraBorealis from '../Hardware/EarthBase/AuroraBorealis';
 import ResonanceChamber from '../Hardware/Audio/ResonanceChamber';
 
 // Dashboard Components
@@ -23,6 +25,8 @@ import AboutPage from './AboutPage';
 import MobileNav from '../Navigation/MobileNav';
 
 import '../../styles/dashboard.css';
+
+const store = createXRStore();
 
 const TerraLogosSystem = () => {
   const metrics = useHVCStore((state) => state.metrics);
@@ -62,6 +66,9 @@ const TerraLogosSystem = () => {
         crustRadius={4.2}
         atmosphereDepth={0.6}
       />
+      
+      {/* Auroral Emissions */}
+      <AuroraBorealis radius={4.25} />
     </group>
   );
 };
@@ -71,32 +78,34 @@ const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
     <div className="earth-visualization-container">
       <ResonanceChamber active={audioEnabled} />
       <Canvas gl={{ antialias: true, alpha: false }}>
-        <color attach="background" args={['#000000']} /> 
-        <Stars 
-          radius={300} 
-          depth={50} 
-          count={5000} 
-          factor={4} 
-          saturation={0} 
-          fade speed={1} 
-        />
-        <PerspectiveCamera makeDefault position={[0, 0, 12]} fov={45} />
-        <OrbitControls 
-          enablePan={false} 
-          minDistance={6} 
-          maxDistance={20} 
-          rotateSpeed={0.5}
-        />
-        <ambientLight intensity={0.05} color="#001133" />
-        <directionalLight 
-          position={[10, 0, 5]} 
-          intensity={1.5} 
-          color="#ffffff" 
-        />
-        <pointLight position={[-10, -10, -5]} intensity={0.5} color="#0044ff" />
-        <Suspense fallback={null}>
-          <TerraLogosSystem />
-        </Suspense>
+        <XR store={store}>
+          <color attach="background" args={['#000000']} /> 
+          <Stars 
+            radius={300} 
+            depth={50} 
+            count={5000} 
+            factor={4} 
+            saturation={0} 
+            fade speed={1} 
+          />
+          <PerspectiveCamera makeDefault position={[0, 0, 12]} fov={45} />
+          <OrbitControls 
+            enablePan={false} 
+            minDistance={6} 
+            maxDistance={20} 
+            rotateSpeed={0.5}
+          />
+          <ambientLight intensity={0.05} color="#001133" />
+          <directionalLight 
+            position={[10, 0, 5]} 
+            intensity={1.5} 
+            color="#ffffff" 
+          />
+          <pointLight position={[-10, -10, -5]} intensity={0.5} color="#0044ff" />
+          <Suspense fallback={null}>
+            <TerraLogosSystem />
+          </Suspense>
+        </XR>
       </Canvas>
       <div className="globe-controls">
         <button 
@@ -104,6 +113,13 @@ const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
           onClick={() => setAudioEnabled(!audioEnabled)}
         >
           {audioEnabled ? '■ Mute Earth Voice' : '▶ Enable Earth Voice'}
+        </button>
+        <button
+          className="xr-toggle"
+          onClick={() => store.enterVR()}
+          style={{ marginLeft: '10px', padding: '8px 16px', background: '#440088', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Enter VR
         </button>
         {!audioEnabled && (
           <p className="audio-hint">Headphones recommended. Audio starts after you click.</p>
