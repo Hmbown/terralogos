@@ -1,0 +1,46 @@
+{
+  "name": "terralogos",
+  "description": "A real-time telemetry system visualizing planetary geophysical signals.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest",
+    "pages:dev": "wrangler pages dev dist --compatibility-date=2024-04-05",
+    "pages:dev:watch": "concurrently -k -s first \"npm:build:watch\" \"wrangler pages dev dist --persist-to=.wrangler/state --port 8788 --compatibility-date=2024-04-05\"",
+    "docker:dev": "npm run pages:dev:watch",
+    "pages:deploy": "npm run build && wrangler pages deploy dist",
+    "pages:deploy:preview": "npm run build && wrangler pages deploy dist --env=preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.181.2",
+    "tone": "^15.1.22",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "jsdom": "^27.2.0",
+    "vite": "^7.2.2",
+    "vitest": "^4.0.10",
+    "wrangler": "^3.0.0"
+  }
+}

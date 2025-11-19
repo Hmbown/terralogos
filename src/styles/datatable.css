@@ -1,0 +1,105 @@
+.data-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  background: rgba(10, 15, 20, 0.5);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.data-table thead {
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.data-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #00ff88;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+}
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.data-table th.sortable:hover {
+  background: rgba(0, 255, 136, 0.15);
+}
+
+.th-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-indicator {
+  font-size: 0.7rem;
+  color: #00ff88;
+}
+
+.data-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e0e8ff;
+}
+
+.data-table tbody tr {
+  transition: background 0.2s;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.data-table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.data-table tbody tr.clickable:hover {
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.data-table .empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #a0b0c0;
+  font-style: italic;
+}
+
+.source-link {
+  margin-left: 0.5rem;
+  color: #00ff88;
+  text-decoration: none;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.source-link:hover {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .data-table {
+    font-size: 0.8rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.5rem 0.75rem;
+  }
+}
+

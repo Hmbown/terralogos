@@ -1,0 +1,18 @@
+name = "terralogos"
+compatibility_date = "2024-04-05"
+pages_build_output_dir = "dist"
+
+[env.production]
+name = "terralogos"
+[env.production.vars]
+STREAM_INTERVAL_MS = "60000"
+STREAM_KEEPALIVE_MS = "15000"
+
+[[env.production.d1_databases]]
+binding = "TERRA_DB"
+database_name = "terralogos-db"
+database_id = "a184273f-c8c5-4bcb-bbda-4664a5c18225"
+migrations_dir = "migrations"
+
+[env.preview]
+name = "terralogos-preview"

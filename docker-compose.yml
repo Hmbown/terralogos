@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  terralogos-dev:
+    image: node:20-slim
+    working_dir: /workspace
+    command: sh -c "npm install && npm run docker:dev"
+    environment:
+      STREAM_INTERVAL_MS: ${STREAM_INTERVAL_MS:-60000}
+      STREAM_KEEPALIVE_MS: ${STREAM_KEEPALIVE_MS:-15000}
+    ports:
+      - "8788:8788"
+    volumes:
+      - .:/workspace
+      - terralogos_node_modules:/workspace/node_modules
+      - terralogos_wrangler:/workspace/.wrangler
+    tty: true
+    stdin_open: true
+
+volumes:
+  terralogos_node_modules:
+  terralogos_wrangler:

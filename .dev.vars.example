@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars for local development overrides.
+# Wrangler will automatically load values from .dev.vars when running `npm run pages:dev`.
+STREAM_INTERVAL_MS=60000
+STREAM_KEEPALIVE_MS=15000

@@ -1,0 +1,155 @@
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-nav-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-nav {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  max-width: 80vw;
+  height: 100vh;
+  background: rgba(10, 15, 20, 0.98);
+  border-left: 2px solid rgba(0, 255, 136, 0.3);
+  z-index: 1000;
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-nav.open {
+  right: 0;
+}
+
+.mobile-nav-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-nav-header h2 {
+  margin: 0;
+  color: #00ff88;
+  font-size: 1.2rem;
+}
+
+.mobile-nav-close {
+  background: transparent;
+  border: none;
+  color: #00ff88;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+}
+
+.mobile-nav-link {
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  color: #a0b0c0;
+  text-align: left;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mobile-nav-link:hover {
+  background: rgba(0, 255, 136, 0.1);
+  color: #e0e8ff;
+  border-left-color: rgba(0, 255, 136, 0.5);
+}
+
+.mobile-nav-link.active {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border-left-color: #00ff88;
+}
+
+/* Collapsible sections for mobile */
+.collapsible-section {
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.collapsible-section-header {
+  padding: 1rem;
+  background: rgba(0, 255, 136, 0.05);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.collapsible-section-header:hover {
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.collapsible-section-title {
+  font-weight: 600;
+  color: #00ff88;
+  margin: 0;
+}
+
+.collapsible-section-toggle {
+  color: #00ff88;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease;
+}
+
+.collapsible-section.open .collapsible-section-toggle {
+  transform: rotate(180deg);
+}
+
+.collapsible-section-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.collapsible-section.open .collapsible-section-content {
+  max-height: 5000px;
+  padding: 1rem;
+}
+
+@media (min-width: 769px) {
+  .mobile-nav-overlay,
+  .mobile-nav {
+    display: none;
+  }
+}
+
