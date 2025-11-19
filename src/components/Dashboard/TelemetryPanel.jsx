@@ -3,7 +3,7 @@ import useHVCStore from '../../core/store/useHVCStore';
 import '../../styles/terminal.css';
 
 const TelemetryPanel = () => {
-  const metrics = useHVCStore((state) => state.metrics);
+  const metrics = useHVCStore((state) => state.data.metrics);
   
   // Local oscillation for "Live Data" feel without churning global state
   const [jitter, setJitter] = useState(0);

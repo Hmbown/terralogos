@@ -3,7 +3,9 @@ import useHVCStore from '../../core/store/useHVCStore';
 import '../../styles/terminal.css';
 
 const SystemStatus = ({ audioEnabled, setAudioEnabled }) => {
-  const closure = useHVCStore((state) => state.status.corticalClosure);
+  // Mocking status for now as it was removed from the new store structure or needs to be added back
+  // Assuming it might be in data.metrics or we need to add it to data
+  const closure = useHVCStore((state) => state.data.metrics.corticalClosure || 0);
   
   // Calculate progress bar width
   const progressPercent = Math.min(closure * 100, 100);

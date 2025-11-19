@@ -3,12 +3,12 @@ import useHVCStore from '../../core/store/useHVCStore';
 import '../../styles/history.css';
 
 const TemporalMemory = () => {
-  const history = useHVCStore((state) => state.history);
-  const timeRange = useHVCStore((state) => state.selectedTimeRange);
-  const setHistory = useHVCStore((state) => state.setHistory);
-  const setHistoryLoading = useHVCStore((state) => state.setHistoryLoading);
-  const setHistoryError = useHVCStore((state) => state.setHistoryError);
-  const setTimeRange = useHVCStore((state) => state.setTimeRange);
+  const history = useHVCStore((state) => state.data.history);
+  const timeRange = useHVCStore((state) => state.ui.selectedTimeRange);
+  const setHistory = useHVCStore((state) => state.actions.setHistory);
+  const setHistoryLoading = useHVCStore((state) => state.actions.setHistoryLoading);
+  const setHistoryError = useHVCStore((state) => state.actions.setHistoryError);
+  const setTimeRange = useHVCStore((state) => state.actions.setTimeRange);
 
   const [selectedTime, setSelectedTime] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1);
