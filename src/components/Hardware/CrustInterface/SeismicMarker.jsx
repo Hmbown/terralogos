@@ -3,6 +3,58 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import useHVCStore from '../../../core/store/useHVCStore';
 
+// Vertex Shader: Standard plane
+const vertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// Fragment Shader: Expanding Ripple
+const fragmentShader = `
+  uniform float uTime;
+  uniform vec3 uColor;
+  uniform float uOpacity;
+
+  varying vec2 vUv;
+
+  void main() {
+    // Center is 0.5, 0.5
+    vec2 center = vec2(0.5);
+    float dist = distance(vUv, center);
+
+    // Create ripples
+    // Ring 1: Expanding from center
+    float speed = 2.0;
+    float t = uTime * speed;
+
+    // Single expanding wave look
+    // A wave is a value that peaks at a certain radius (t)
+
+    // Make multiple waves that repeat
+    float wave = sin(dist * 40.0 - t * 5.0);
+
+    // Soften
+    float ring = smoothstep(0.4, 0.5, wave) * smoothstep(0.6, 0.5, wave);
+
+    // Mask circle
+    float circle = 1.0 - smoothstep(0.4, 0.5, dist);
+
+    // Core intensity
+    float core = 1.0 - smoothstep(0.0, 0.1, dist);
+
+    // Combine
+    float alpha = (ring * 0.5 + core * 0.8) * circle * uOpacity;
+
+    // Fade out over distance from center
+    alpha *= (1.0 - dist * 2.0);
+
+    gl_FragColor = vec4(uColor, alpha);
+  }
+`;
+
 /**
  * Convert lat/lon to 3D position on sphere
  */
@@ -17,100 +69,84 @@ const latLonToVector3 = (lat, lon, radius) => {
   return new THREE.Vector3(x, y, z);
 };
 
-/**
- * SingleEarthquakeMarker - Individual earthquake marker
- */
 const SingleEarthquakeMarker = ({ earthquake, index, earthRadius = 4.2 }) => {
   const meshRef = useRef();
-  const pulseRef = useRef(Math.random() * Math.PI * 2); // Random start phase
-
-  useFrame((state, delta) => {
-    if (!meshRef.current) return;
-
-    // Pulsing animation based on magnitude
-    const magnitude = earthquake.magnitude || 0;
-    pulseRef.current += delta * (2 + earthquake.intensity * 3);
-    const scale = 1 + Math.sin(pulseRef.current) * 0.3 * (0.5 + earthquake.intensity * 0.5);
-    meshRef.current.scale.setScalar(scale);
-  });
 
   // Color based on magnitude
   const magnitude = earthquake.magnitude || 0;
-  let color = '#00ffff'; // Cyan for small
-  if (magnitude >= 5) color = '#ff0000'; // Red for large
-  else if (magnitude >= 4) color = '#ff8800'; // Orange for medium
+  let color = new THREE.Color('#00ffff');
+  if (magnitude >= 7) color = new THREE.Color('#ff0000');
+  else if (magnitude >= 5) color = new THREE.Color('#ff8800');
+  else if (magnitude >= 3) color = new THREE.Color('#ffff00');
 
   // Calculate age-based opacity
   const now = Date.now();
   const eqTime = new Date(earthquake.time || earthquake.timestamp).getTime();
   const ageHours = (now - eqTime) / (1000 * 60 * 60);
-  const opacity = Math.max(0.3, 1 - (ageHours / 48)); // Fade over 48 hours
+  const opacity = Math.max(0.0, 1 - (ageHours / 24)); // Fade over 24 hours for visuals
 
-  // Position on Earth surface
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uColor: { value: color },
+    uOpacity: { value: opacity }
+  }), [color, opacity]);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.material.uniforms.uTime.value = state.clock.elapsedTime + index * 100;
+      // Look at center of earth (0,0,0) so the plane is tangent to surface
+      meshRef.current.lookAt(0, 0, 0);
+    }
+  });
+
+  if (opacity <= 0) return null;
+
+  // Position
   let position;
   if (earthquake.pos) {
-    // Already has 3D position
-    position = earthquake.pos;
+    position = new THREE.Vector3(...earthquake.pos);
   } else if (earthquake.lat !== undefined && earthquake.lon !== undefined) {
-    // Convert from lat/lon
-    const vec = latLonToVector3(earthquake.lat, earthquake.lon, earthRadius);
-    position = [vec.x, vec.y, vec.z];
+    position = latLonToVector3(earthquake.lat, earthquake.lon, earthRadius);
   } else {
-    // Fallback - don't render
     return null;
   }
 
+  // Scale based on magnitude
+  const size = 0.3 + (magnitude / 10) * 1.0;
+
   return (
-    <group ref={meshRef} position={position}>
-      {/* Outer pulsing ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.15, 0.25, 32]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={opacity * 0.6}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* Inner core */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.1, 32]} />
-        <meshBasicMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={2}
-          transparent
-          opacity={opacity * 0.9}
-        />
-      </mesh>
-    </group>
+    <mesh ref={meshRef} position={position}>
+      <planeGeometry args={[size, size]} />
+      <shaderMaterial
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={uniforms}
+        transparent
+        side={THREE.DoubleSide}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
   );
 };
 
-/**
- * SeismicMarker - Visual markers for earthquake events on the Earth surface
- * Shows pulsing ring effects at earthquake locations
- */
 const SeismicMarker = () => {
-  const earthquakeHistory = useHVCStore((state) => state.metrics.earthquakeHistory);
-  const lastEvent = useHVCStore((state) => state.metrics.lastSeismicEvent);
+  // Accessing the new store structure
+  const earthquakeHistory = useHVCStore((state) => state.data.metrics.earthquakeHistory);
+  const lastEvent = useHVCStore((state) => state.data.metrics.lastSeismicEvent);
 
-  // Combine history with last event if it's not already in history
+  // Combine history with last event
   const earthquakes = useMemo(() => {
     const history = earthquakeHistory || [];
-
-    // Check if lastEvent is already in history
     if (lastEvent && lastEvent.id) {
       const isInHistory = history.some(eq => eq.id === lastEvent.id);
       if (!isInHistory) {
         return [...history, lastEvent];
       }
     }
-
     return history;
   }, [earthquakeHistory, lastEvent]);
 
-  // Only show earthquakes with valid data
   const validEarthquakes = earthquakes.filter(eq =>
     eq && eq.id && (eq.pos || (eq.lat !== undefined && eq.lon !== undefined))
   );
@@ -131,4 +167,3 @@ const SeismicMarker = () => {
 };
 
 export default SeismicMarker;
-

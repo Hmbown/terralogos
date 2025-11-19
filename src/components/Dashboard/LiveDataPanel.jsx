@@ -5,7 +5,7 @@ import HelpTooltip from '../Help/HelpTooltip';
 import '../../styles/livedata.css';
 
 const LiveDataPanel = () => {
-  const metrics = useHVCStore((state) => state.metrics);
+  const metrics = useHVCStore((state) => state.data.metrics);
   const meta = useHVCStore((state) => state.meta);
   const [expandedSections, setExpandedSections] = useState({
     seismic: true,

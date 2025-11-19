@@ -14,7 +14,7 @@ export const useEarthVoice = () => {
       if (!payload || !payload.metrics) return;
       useHVCStore.setState((state) => ({
         metrics: {
-          ...state.metrics,
+          ...state.data.metrics,
           ...payload.metrics,
           lastUpdated: payload.timestamp || new Date().toISOString(),
         },
