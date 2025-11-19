@@ -4,6 +4,8 @@
 
 Access the application: [**terralogos.pages.dev**](https://terralogos.pages.dev)
 
+> **Note**: Automatic deployment to Cloudflare Pages via GitHub Actions is now configured.
+
 ---
 
 ## Overview
