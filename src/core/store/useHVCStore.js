@@ -8,6 +8,7 @@ const useHVCStore = create((set) => ({
     crustTemp: null,
     solarWindFlux: null,
     lastSeismicEvent: null,
+    earthquakeHistory: [], // Track recent earthquakes
     volcanoes: [],
     solar: null,
     atmosphere: null,
@@ -17,7 +18,7 @@ const useHVCStore = create((set) => ({
     timestamp: null,
     sources: {},
   },
-  
+
   // Historical data
   history: {
     data: [],
@@ -26,14 +27,14 @@ const useHVCStore = create((set) => ({
     pagination: null,
     filters: null,
   },
-  
+
   // UI state
   viewMode: 'live', // 'live', 'history', 'about'
   selectedTimeRange: {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     end: new Date().toISOString(),
   },
-  
+
   // Legacy status (may be removed or repurposed)
   status: {
     corticalClosure: 0,
@@ -42,19 +43,19 @@ const useHVCStore = create((set) => ({
 
   // Actions
   updateMetric: (key, value) => set((state) => ({
-    metrics: { 
-      ...state.metrics, 
+    metrics: {
+      ...state.metrics,
       [key]: value,
       lastUpdated: new Date().toISOString()
     }
   })),
-  
+
   setViewMode: (mode) => set({ viewMode: mode }),
-  
+
   setTimeRange: (start, end) => set({
     selectedTimeRange: { start, end }
   }),
-  
+
   setHistory: (data, pagination, filters = null) => set({
     history: {
       data,
@@ -64,14 +65,37 @@ const useHVCStore = create((set) => ({
       error: null,
     }
   }),
-  
+
   setHistoryLoading: (loading) => set((state) => ({
     history: { ...state.history, loading }
   })),
-  
+
   setHistoryError: (error) => set((state) => ({
     history: { ...state.history, error, loading: false }
   })),
+
+  // Add earthquake to history (keep last 48 hours)
+  addEarthquake: (earthquake) => set((state) => {
+    const now = Date.now();
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+
+    // Filter out old earthquakes and add new one
+    const updatedHistory = [
+      ...state.metrics.earthquakeHistory.filter(eq => {
+        const eqTime = new Date(eq.time || eq.timestamp).getTime();
+        return now - eqTime < fortyEightHours;
+      }),
+      { ...earthquake, timestamp: earthquake.time || earthquake.timestamp || new Date().toISOString() }
+    ].slice(-50); // Keep max 50 earthquakes
+
+    return {
+      metrics: {
+        ...state.metrics,
+        earthquakeHistory: updatedHistory,
+        lastSeismicEvent: earthquake
+      }
+    };
+  }),
 }));
 
 export default useHVCStore;

@@ -16,6 +16,9 @@ import SeismicMarker from '../Hardware/CrustInterface/SeismicMarker';
 import VolcanicVents from '../Hardware/CrustInterface/VolcanicVents';
 import IonosphereCooling from '../Hardware/AtmosphereSink/IonosphereCooling';
 import AuroraBorealis from '../Hardware/EarthBase/AuroraBorealis';
+import ISSTracker from '../Hardware/EarthBase/ISSTracker';
+import SolarFlareRing from '../Hardware/EarthBase/SolarFlareRing';
+import SolarWindParticles from '../Hardware/EarthBase/SolarWindParticles';
 import ResonanceChamber from '../Hardware/Audio/ResonanceChamber';
 
 // Dashboard Components
@@ -30,45 +33,59 @@ const store = createXRStore();
 
 const TerraLogosSystem = () => {
   const metrics = useHVCStore((state) => state.metrics);
+  const isFlare = metrics.solar?.class === 'M' || metrics.solar?.class === 'X';
+  const flareColor = isFlare ? '#ffaa00' : '#ffffff';
 
   return (
     <group>
       {/* Base Earth Globe - provides geographic context */}
       <EarthGlobe radius={4.2} />
-      
+
       {/* Grid lines for orientation */}
       <GridLines radius={4.25} />
-      
+
       {/* Core and Mantle layers (internal, visible through transparency) */}
-      <PlasmaTopology 
-        systemLoad={metrics.coreLoad || 0} 
-        radius={2.5} 
+      <PlasmaTopology
+        systemLoad={metrics.coreLoad || 0}
+        radius={2.5}
       />
-      <WaveGuide 
+
+      {/* Solar Direction Indicator (Conceptual) */}
+      {isFlare && (
+        <pointLight position={[100, 20, 0]} intensity={5} color={flareColor} distance={500} />
+      )}
+      <WaveGuide
         busLoad={(metrics.mantleBandwidth || 0) / 1000}
         coreRadius={2.5}
         mantleDepth={1.5}
       />
-      
+
       {/* Crust layer with seismic activity */}
-      <PiezoHead 
+      <PiezoHead
         mantleRadius={4.0}
         crustDepth={0.2}
       />
-      
+
       {/* Surface features */}
       <SeismicMarker />
       <VolcanicVents />
-      
+
       {/* Atmosphere layer */}
-      <IonosphereCooling 
+      <IonosphereCooling
         systemTemp={metrics.crustTemp || 288}
         crustRadius={4.2}
         atmosphereDepth={0.6}
       />
-      
+
       {/* Auroral Emissions */}
       <AuroraBorealis radius={4.25} />
+
+      {/* Satellite Tracking */}
+      <ISSTracker />
+
+      {/* Solar Activity Visualizations */}
+      <SolarFlareRing earthRadius={4.2} />
+      <SolarWindParticles count={1000} earthRadius={4.2} />
     </group>
   );
 };
@@ -79,27 +96,27 @@ const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
       <ResonanceChamber active={audioEnabled} />
       <Canvas gl={{ antialias: true, alpha: false }}>
         <XR store={store}>
-          <color attach="background" args={['#000000']} /> 
-          <Stars 
-            radius={300} 
-            depth={50} 
-            count={5000} 
-            factor={4} 
-            saturation={0} 
-            fade speed={1} 
+          <color attach="background" args={['#000000']} />
+          <Stars
+            radius={300}
+            depth={50}
+            count={5000}
+            factor={4}
+            saturation={0}
+            fade speed={1}
           />
           <PerspectiveCamera makeDefault position={[0, 0, 12]} fov={45} />
-          <OrbitControls 
-            enablePan={false} 
-            minDistance={6} 
-            maxDistance={20} 
+          <OrbitControls
+            enablePan={false}
+            minDistance={6}
+            maxDistance={20}
             rotateSpeed={0.5}
           />
           <ambientLight intensity={0.05} color="#001133" />
-          <directionalLight 
-            position={[10, 0, 5]} 
-            intensity={1.5} 
-            color="#ffffff" 
+          <directionalLight
+            position={[10, 0, 5]}
+            intensity={1.5}
+            color="#ffffff"
           />
           <pointLight position={[-10, -10, -5]} intensity={0.5} color="#0044ff" />
           <Suspense fallback={null}>
@@ -108,7 +125,7 @@ const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
         </XR>
       </Canvas>
       <div className="globe-controls">
-        <button 
+        <button
           className="audio-toggle"
           onClick={() => setAudioEnabled(!audioEnabled)}
         >
@@ -150,13 +167,13 @@ const MainDashboard = () => {
 
   return (
     <div className="main-dashboard">
-      <MobileNav 
+      <MobileNav
         viewMode={viewMode}
         setViewMode={setViewMode}
         isOpen={mobileMenuOpen}
         setIsOpen={setMobileMenuOpen}
       />
-      
+
       <div className="dashboard-header">
         <div className="header-content">
           <h1 className="dashboard-title">Terra-Logos</h1>
@@ -180,7 +197,7 @@ const MainDashboard = () => {
               About
             </button>
           </nav>
-          <button 
+          <button
             className="mobile-menu-button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Menu"
@@ -196,7 +213,7 @@ const MainDashboard = () => {
         ) : (
           <div className="dashboard-split">
             <div className="dashboard-left">
-              <EarthVisualization 
+              <EarthVisualization
                 audioEnabled={audioEnabled}
                 setAudioEnabled={setAudioEnabled}
               />

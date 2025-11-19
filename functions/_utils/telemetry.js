@@ -5,7 +5,8 @@ const NOAA_SOLAR_WIND_URL = 'https://services.swpc.noaa.gov/products/solar-wind/
 const NOAA_PROTON_URL = 'https://services.swpc.noaa.gov/json/goes/primary/integral-protons-plot-1-day.json';
 const USGS_VOLCANO_URL = 'https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes';
 const NOAA_CO2_URL = 'https://scrippsco2.ucsd.edu/assets/data/atmospheric/stations/in_situ_co2/weekly/weekly_in_situ_co2_mlo.csv';
-const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast?latitude=19.54&longitude=-155.58&current=temperature_2m';
+const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast?latitude=19.54&longitude=-155.58&current=temperature_2m,wind_speed_10m';
+const ISS_URL = 'https://api.wheretheiss.at/v1/satellites/25544';
 
 const GLOBE_RADIUS = 4.2;
 const encoder = new TextEncoder();
@@ -234,17 +235,33 @@ export async function fetchWeatherSample() {
   const data = await response.json();
   const temperatureC = data?.current?.temperature_2m;
   const temperatureK = typeof temperatureC === 'number' ? temperatureC + 273.15 : 0;
+  const windSpeed = data?.current?.wind_speed_10m || 0; // km/h
   return {
     source: 'OpenMeteo',
     temperatureC,
     temperatureK,
+    windSpeed,
     raw: data,
+  };
+}
+
+export async function fetchISSLocation() {
+  const response = await fetch(ISS_URL);
+  if (!response.ok) throw new Error('ISS feed unavailable');
+  const data = await response.json();
+  return {
+    lat: data.latitude,
+    lon: data.longitude,
+    alt: data.altitude, // km
+    vel: data.velocity, // km/h
+    vis: data.visibility,
+    pos: sphericalToCartesian(data.latitude, data.longitude, GLOBE_RADIUS + (data.altitude / 6371) * GLOBE_RADIUS),
   };
 }
 
 export async function gatherTelemetrySnapshot() {
   const timestamp = new Date().toISOString();
-  const [seismicFeed, kp, solarPacket, volcanoes, climate, weather] = await Promise.all([
+  const [seismicFeed, kp, solarPacket, volcanoes, climate, weather, iss] = await Promise.all([
     fetchSeismicFeed().catch((err) => {
       console.error('[TELEMETRY] Seismic feed error:', err.message);
       return { error: err.message };
@@ -267,6 +284,10 @@ export async function gatherTelemetrySnapshot() {
     }),
     fetchWeatherSample().catch((err) => {
       console.error('[TELEMETRY] Weather sample error:', err.message);
+      return { error: err.message };
+    }),
+    fetchISSLocation().catch((err) => {
+      console.error('[TELEMETRY] ISS feed error:', err.message);
       return { error: err.message };
     }),
   ]);
@@ -298,7 +319,11 @@ export async function gatherTelemetrySnapshot() {
     atmosphere: {
       co2: climate?.co2 ?? 420,
       tempAnomaly: 0,
+      windSpeed: weather?.windSpeed ?? 0,
     },
+    satellites: {
+      iss: iss?.error ? null : iss,
+    }
   };
 
   const meta = {
@@ -316,6 +341,7 @@ export async function gatherTelemetrySnapshot() {
         : { count: volcanoPayload.length },
       climate: climate?.error ? { error: climate.error } : climate,
       weather: weather?.error ? { error: weather.error } : (weather ? { source: weather.source, updated: timestamp } : null),
+      iss: iss?.error ? { error: iss.error } : { source: 'WhereTheISS.at', updated: timestamp },
     },
   };
 

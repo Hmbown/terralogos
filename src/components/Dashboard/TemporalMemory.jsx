@@ -43,7 +43,20 @@ const TemporalMemory = () => {
   };
 
   const processDataForVisualization = () => {
-    if (!history.data || history.data.length === 0) return { streams: [], events: [] };
+    // Default return structure
+    const defaultReturn = {
+      streams: {
+        coreLoad: [],
+        solarWind: [],
+        temperature: [],
+        co2: [],
+      },
+      events: []
+    };
+
+    if (!history || !history.data || history.data.length === 0) {
+      return defaultReturn;
+    }
 
     const streams = {
       coreLoad: [],
@@ -91,7 +104,7 @@ const TemporalMemory = () => {
     return { streams, events };
   };
 
-  const { streams, events } = processDataForVisualization();
+  const { streams = { coreLoad: [], solarWind: [], temperature: [], co2: [] }, events = [] } = processDataForVisualization();
 
   const normalizeValue = (value, min, max) => {
     if (max === min) return 0.5;
@@ -100,10 +113,10 @@ const TemporalMemory = () => {
 
   const renderStreams = () => {
     const hasData =
-      streams.coreLoad.length ||
-      streams.solarWind.length ||
-      streams.temperature.length ||
-      streams.co2.length;
+      streams?.coreLoad?.length ||
+      streams?.solarWind?.length ||
+      streams?.temperature?.length ||
+      streams?.co2?.length;
 
     if (!hasData) {
       return <div className="no-data">No historical snapshots recorded for this range yet.</div>;
@@ -116,7 +129,7 @@ const TemporalMemory = () => {
     const plotWidth = width - padding.left - padding.right;
     const plotHeight = height - padding.top - padding.bottom;
 
-    const times = streams.coreLoad.map(s => s.time);
+    const times = (streams?.coreLoad || []).map(s => s.time);
     const minTime = Math.min(...times);
     const maxTime = Math.max(...times);
     const timeRange = Math.max(maxTime - minTime, 1);

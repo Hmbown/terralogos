@@ -14,23 +14,26 @@ The system connects to multiple scientific data sources to monitor planetary-sca
 - **Seismic Activity**: Real-time earthquake feeds (USGS).
 - **Heliophysics**: Solar wind speed, density, and X-ray flux (NOAA SWPC).
 - **Geomagnetics**: Planetary K-index (NOAA).
-- **Atmosphere**: Global temperature samples and Mauna Loa CO₂ trends (OpenMeteo / NOAA).
+- **Atmosphere**: Global temperature samples, Wind Speed, and Mauna Loa CO₂ trends (OpenMeteo / NOAA / Scripps).
 - **Volcanism**: Elevated alert status for active volcanic regions (USGS).
+- **Satellites**: Real-time ISS telemetry (WhereTheISS.at).
 
 ### Architecture
 Data is normalized and processed through a serverless pipeline:
 1. **Ingestion**: Cloudflare Workers poll APIs at 1-minute intervals.
-2. **Persistence**: Snapshots are stored in a D1 database for historical context.
+2. **Persistence**: Snapshots are stored in a D1 database for historical context and caching.
 3. **Broadcast**: A Server-Sent Events (SSE) stream pushes updates to clients.
 4. **Output**:
-   - **Visualization**: A React Three Fiber 3D interface representing system components (Core, Mantle, Atmosphere).
+   - **Visualization**: A React Three Fiber 3D interface representing system components (Core, Mantle, Atmosphere, Orbit).
    - **Sonification**: An audio engine that maps data values to sound parameters (e.g., solar wind density to pitch).
+   - **Immersion**: WebXR support for VR/AR exploration.
 
 ### Visual + Audio Signal Mapping
-- **Seismic** – Earthquake magnitude drives the crust ripple shader and triggers percussive Tone.js hits.
-- **Solar** – Solar wind speed + flare class recolor the mantle waveguide and retune the heliophonic drone.
+- **Seismic** – Earthquake magnitude drives the crust ripple shader and triggers spatially panned percussive Tone.js hits.
+- **Solar** – Solar wind speed + flare class recolor the mantle waveguide and retune the heliophonic drone. Major flares trigger atmospheric ionization effects.
 - **Volcanic** – Active (Orange/Red) volcanoes rise animated plumes on the globe and thicken the global reverb tail.
-- **Atmosphere** – CO₂ + surface temperature tint the ionosphere glow and swell the atmospheric pink-noise layer.
+- **Atmosphere** – CO₂ + surface temperature tint the ionosphere glow and swell the atmospheric pink-noise layer. Wind speed drives cloud rotation.
+- **Orbit** – Real-time ISS tracking marker.
 - **Temporal Memory** – Hourly D1 snapshots render as streamed traces (core load, wind, temperature, CO₂) for historical context.
 
 ## Deployment
@@ -68,12 +71,13 @@ terralogos/
 
 ## Status
 
-**Current Phase: System Integration**
-- [x] Visualization engine active.
-- [x] Data ingestion pipelines established.
-- [x] Audio synthesis connected.
+**Current Phase: Feature Complete**
+- [x] Visualization engine active (Day/Night cycle, Auroras, Atmosphere).
+- [x] Data ingestion pipelines established (Resilient Caching).
+- [x] Audio synthesis connected (Spatial Audio).
+- [x] WebXR / VR Support.
+- [x] Satellite Tracking (ISS).
 
 ## License
 
 MIT
-
