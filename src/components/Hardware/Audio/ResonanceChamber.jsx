@@ -47,44 +47,65 @@ const ResonanceChamber = ({ active }) => {
         frequency: 0.1,
         baseFrequency: 200,
         octaves: 2
-    }).connect(limiter).start();
+    }).connect(limiter);
     
     atmosNoise.current = new Tone.Noise("pink").connect(atmosFilter.current);
     atmosNoise.current.volume.value = -30; // Very quiet hiss
     
     return () => {
       // Cleanup
-      if (solarDrone.current) solarDrone.current.dispose();
-      if (seismicSynth.current) seismicSynth.current.dispose();
-      if (atmosNoise.current) atmosNoise.current.dispose();
-      if (masterGain.current) masterGain.current.dispose();
+      if (solarDrone.current) {
+        solarDrone.current.dispose();
+        solarDrone.current = null;
+      }
+      if (seismicSynth.current) {
+        seismicSynth.current.dispose();
+        seismicSynth.current = null;
+      }
+      if (atmosNoise.current) {
+        atmosNoise.current.dispose();
+        atmosNoise.current = null;
+      }
+      if (atmosFilter.current) {
+        atmosFilter.current.dispose();
+        atmosFilter.current = null;
+      }
+      if (masterGain.current) {
+        masterGain.current.dispose();
+        masterGain.current = null;
+      }
     };
   }, []);
 
   // --- HANDLE MUTE/UNMUTE ---
   useEffect(() => {
+    if (!solarDrone.current || !atmosNoise.current || !atmosFilter.current) return;
+
     if (active) {
       // Only start audio context after user interaction (button click)
       // This prevents the AudioContext warnings
-      Tone.start().catch((err) => {
-        console.warn('[AUDIO] Failed to start audio context:', err);
-      });
-      Tone.Destination.mute = false;
-      
-      // Start Generators
-      if (solarDrone.current) solarDrone.current.triggerAttack("C2");
-      if (atmosNoise.current) atmosNoise.current.start();
-      
+      Tone.start()
+        .then(() => {
+          Tone.Destination.mute = false;
+          // Start Generators after context is resumed
+          solarDrone.current.triggerAttack("C2");
+          atmosNoise.current.start();
+          atmosFilter.current.start();
+        })
+        .catch((err) => {
+          console.warn('[AUDIO] Failed to start audio context:', err);
+        });
     } else {
       Tone.Destination.mute = true;
       if (solarDrone.current) solarDrone.current.triggerRelease();
       if (atmosNoise.current) atmosNoise.current.stop();
+      if (atmosFilter.current) atmosFilter.current.stop();
     }
   }, [active]);
 
   // --- REACT TO DATA STREAMS ---
   useEffect(() => {
-    if (!active) return;
+    if (!active || !solarFilter.current || !solarDrone.current || !atmosNoise.current || !atmosFilter.current) return;
 
     // A. SOLAR MODULATION
     // Wind speed (300 - 800 km/s) maps to Filter Freq & Modulation

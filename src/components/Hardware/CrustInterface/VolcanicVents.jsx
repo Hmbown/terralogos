@@ -70,7 +70,7 @@ const VolcanicVents = () => {
       if (ringMeshRef.current) {
         ringMeshRef.current.setMatrixAt(index, dummy.matrix);
         const ringColor = status === 'RED' ? '#ff4444' : '#ffaa44';
-        ringMeshRef.current.setColorAt(index, ringColor);
+        ringMeshRef.current.setColorAt(index, new THREE.Color(ringColor));
       }
     });
 
