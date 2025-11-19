@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
 import { Suspense } from 'react';
 import { createXRStore, XR } from '@react-three/xr';
-import useHVCStore from '../../core/store/useHVCStore';
+import useHVCStore, { useMockDataGenerator } from '../../core/store/useHVCStore';
 import { useEarthVoice } from '../../core/hooks/useEarthVoice';
 
 // 3D Components
@@ -32,12 +32,18 @@ import '../../styles/dashboard.css';
 const store = createXRStore();
 
 const TerraLogosSystem = () => {
-  const metrics = useHVCStore((state) => state.metrics);
+  const metrics = useHVCStore((state) => state.data.metrics);
+  const isStale = useHVCStore((state) => state.data.isStale);
   const isFlare = metrics.solar?.class === 'M' || metrics.solar?.class === 'X';
   const flareColor = isFlare ? '#ffaa00' : '#ffffff';
 
   return (
     <group>
+        {/* Stale data visual indicator: desaturate/dim entire system */}
+        {isStale && (
+             <fog attach="fog" args={['#000000', 5, 25]} />
+        )}
+
       {/* Base Earth Globe - provides geographic context */}
       <EarthGlobe radius={4.2} />
 
@@ -91,8 +97,22 @@ const TerraLogosSystem = () => {
 };
 
 const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
+  const isStale = useHVCStore((state) => state.data.isStale);
+
   return (
     <div className="earth-visualization-container">
+      {isStale && <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: '#888',
+          background: 'rgba(0,0,0,0.8)',
+          padding: '5px 10px',
+          borderRadius: '4px',
+          zIndex: 10,
+          border: '1px solid #444'
+      }}>DATA STALE - CONNECTING...</div>}
       <ResonanceChamber active={audioEnabled} />
       <Canvas gl={{ antialias: true, alpha: false }}>
         <XR store={store}>
@@ -148,10 +168,44 @@ const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
 
 const MainDashboard = () => {
   useEarthVoice();
-  const viewMode = useHVCStore((state) => state.viewMode);
-  const setViewMode = useHVCStore((state) => state.setViewMode);
+  const viewMode = useHVCStore((state) => state.ui.viewMode);
+  const setViewMode = useHVCStore((state) => state.actions.setViewMode);
+
+  const isMockMode = useHVCStore((state) => state.ui.isMockMode);
+  const setMockMode = useHVCStore((state) => state.actions.setMockMode);
+  const checkStaleness = useHVCStore((state) => state.actions.checkStaleness);
+  const triggerMockEvent = useHVCStore((state) => state.actions.triggerMockEvent);
+
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Use the mock data generator if mock mode is enabled
+  useMockDataGenerator(isMockMode);
+
+  // Check for staleness periodically
+  useEffect(() => {
+    const interval = setInterval(checkStaleness, 60000);
+    return () => clearInterval(interval);
+  }, [checkStaleness]);
+
+  // Toggle mock mode with keyboard shortcut (Ctrl+Shift+M)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+        setMockMode(!isMockMode);
+        console.log(`Mock Mode ${!isMockMode ? 'Enabled' : 'Disabled'}`);
+      }
+      // Triggers for demo
+      if (isMockMode && e.shiftKey && e.key === 'F') {
+          triggerMockEvent('flare-X');
+      }
+      if (isMockMode && e.shiftKey && e.key === 'Q') {
+          triggerMockEvent('quake-9');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMockMode, setMockMode, triggerMockEvent]);
 
   const renderContent = () => {
     switch (viewMode) {
@@ -176,7 +230,7 @@ const MainDashboard = () => {
 
       <div className="dashboard-header">
         <div className="header-content">
-          <h1 className="dashboard-title">Terra-Logos</h1>
+          <h1 className="dashboard-title">Terra-Logos {isMockMode && <span style={{fontSize: '0.5em', color: '#ffaa00'}}>[SIMULATION]</span>}</h1>
           <nav className="dashboard-nav">
             <button
               className={`nav-button ${viewMode === 'live' ? 'active' : ''}`}
@@ -229,4 +283,3 @@ const MainDashboard = () => {
 };
 
 export default MainDashboard;
-
