@@ -2,6 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import useHVCStore from '../../../core/store/useHVCStore';
 
+const classEnergy = {
+  A: 0,
+  B: 0.2,
+  C: 0.4,
+  M: 0.7,
+  X: 1,
+};
+
 const ResonanceChamber = ({ active }) => {
   const metrics = useHVCStore((state) => state.metrics);
   
@@ -12,6 +20,7 @@ const ResonanceChamber = ({ active }) => {
   const seismicSynth = useRef(null); // PolySynth
   const atmosNoise = useRef(null); // Pink Noise
   const atmosFilter = useRef(null);
+  const reverbRef = useRef(null);
 
   // Track previous seismic event to trigger only on change
   const prevSeismicLabel = useRef(metrics.lastSeismicEvent?.label);
@@ -35,11 +44,11 @@ const ResonanceChamber = ({ active }) => {
     solarDrone.current.volume.value = -20; // Subtle background
 
     // 3. Seismic Voice (Transient pings)
-    const reverb = new Tone.Reverb(3).connect(limiter);
+    reverbRef.current = new Tone.Reverb(3).connect(limiter);
     seismicSynth.current = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "triangle" },
       envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 1 }
-    }).connect(reverb);
+    }).connect(reverbRef.current);
     seismicSynth.current.volume.value = -5;
 
     // 4. Atmosphere Haze (Background Texture)
@@ -69,6 +78,10 @@ const ResonanceChamber = ({ active }) => {
       if (atmosFilter.current) {
         atmosFilter.current.dispose();
         atmosFilter.current = null;
+      }
+      if (reverbRef.current) {
+        reverbRef.current.dispose();
+        reverbRef.current = null;
       }
       if (masterGain.current) {
         masterGain.current.dispose();
@@ -119,6 +132,9 @@ const ResonanceChamber = ({ active }) => {
     if (solarDrone.current) {
         // More wind = more chaotic modulation
         solarDrone.current.modulationIndex.rampTo(3 + (normWind * 10), 2);
+        const flareLevel = classEnergy[metrics.solar?.class] ?? 0;
+        const targetFreq = 110 + flareLevel * 70;
+        solarDrone.current.frequency.rampTo(targetFreq, 3);
     }
 
     // B. ATMOSPHERE MODULATION
@@ -157,6 +173,13 @@ const ResonanceChamber = ({ active }) => {
         }
         
         console.log(`[AUDIO] Seismic Pulse: ${intensity.toFixed(2)}`);
+    }
+
+    // Volcano density adds resonance
+    const volcanoCount = metrics.volcanoes?.length || 0;
+    if (reverbRef.current) {
+      reverbRef.current.decay = Math.min(3 + volcanoCount * 0.4, 8);
+      reverbRef.current.wet.value = Math.min(0.15 + volcanoCount * 0.05, 0.9);
     }
 
   }, [metrics, active]);

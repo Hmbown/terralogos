@@ -26,6 +26,13 @@ Data is normalized and processed through a serverless pipeline:
    - **Visualization**: A React Three Fiber 3D interface representing system components (Core, Mantle, Atmosphere).
    - **Sonification**: An audio engine that maps data values to sound parameters (e.g., solar wind density to pitch).
 
+### Visual + Audio Signal Mapping
+- **Seismic** – Earthquake magnitude drives the crust ripple shader and triggers percussive Tone.js hits.
+- **Solar** – Solar wind speed + flare class recolor the mantle waveguide and retune the heliophonic drone.
+- **Volcanic** – Active (Orange/Red) volcanoes rise animated plumes on the globe and thicken the global reverb tail.
+- **Atmosphere** – CO₂ + surface temperature tint the ionosphere glow and swell the atmospheric pink-noise layer.
+- **Temporal Memory** – Hourly D1 snapshots render as streamed traces (core load, wind, temperature, CO₂) for historical context.
+
 ## Deployment
 
 The project is hosted on **Cloudflare Pages**.

@@ -54,6 +54,30 @@
   flex: 1;
 }
 
+.section-status {
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.source-status {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  color: #00ff88;
+}
+
+.source-status.warning {
+  color: #ffc657;
+  border-color: rgba(255, 198, 87, 0.6);
+}
+
+.source-status.error {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.6);
+}
+
 .section-title {
   font-size: 1.2rem;
   color: #00ff88;
@@ -135,6 +159,11 @@
   .section-header {
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  .section-status {
+    order: 4;
+    width: 100%;
   }
 
   .source-link-header {

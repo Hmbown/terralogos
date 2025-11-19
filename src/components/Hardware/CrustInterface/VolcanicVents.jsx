@@ -7,7 +7,9 @@ const VolcanicVents = () => {
   const volcanoes = useHVCStore((state) => state.metrics.volcanoes);
   const meshRef = useRef();
   const ringMeshRef = useRef();
+  const plumeMeshRef = useRef();
   const dummyRef = useRef(new THREE.Object3D());
+  const plumeDummyRef = useRef(new THREE.Object3D());
   const colorRef = useRef(new THREE.Color());
   const timeRef = useRef(0);
   const count = volcanoes ? volcanoes.length : 0;
@@ -21,7 +23,7 @@ const VolcanicVents = () => {
   });
 
   useLayoutEffect(() => {
-    if (!meshRef.current || count === 0) {
+    if ((!meshRef.current && !plumeMeshRef.current && !ringMeshRef.current) || count === 0) {
       if (meshRef.current) {
         meshRef.current.count = 0;
         meshRef.current.instanceMatrix.needsUpdate = true;
@@ -29,6 +31,10 @@ const VolcanicVents = () => {
       if (ringMeshRef.current) {
         ringMeshRef.current.count = 0;
         ringMeshRef.current.instanceMatrix.needsUpdate = true;
+      }
+      if (plumeMeshRef.current) {
+        plumeMeshRef.current.count = 0;
+        plumeMeshRef.current.instanceMatrix.needsUpdate = true;
       }
       return;
     }
@@ -42,6 +48,7 @@ const VolcanicVents = () => {
       // 1. Position - slightly above surface for visibility
       const [x, y, z] = volcano.pos;
       const radius = Math.sqrt(x * x + y * y + z * z);
+      const normal = new THREE.Vector3(x, y, z).normalize();
       const scaleFactor = 1.02; // Slightly above surface
       dummy.position.set(x * scaleFactor, y * scaleFactor, z * scaleFactor);
 
@@ -72,6 +79,18 @@ const VolcanicVents = () => {
         const ringColor = status === 'RED' ? '#ff4444' : '#ffaa44';
         ringMeshRef.current.setColorAt(index, new THREE.Color(ringColor));
       }
+
+      // Plume trail slightly above the vent
+      if (plumeMeshRef.current) {
+        const plumeDummy = plumeDummyRef.current;
+        plumeDummy.position.copy(normal).multiplyScalar(radius * 1.05);
+        plumeDummy.lookAt(0, 0, 0);
+        plumeDummy.rotateX(Math.PI / 2);
+        const plumeScale = status === 'RED' ? 1.4 : 0.9;
+        plumeDummy.scale.set(0.2, plumeScale, 0.2);
+        plumeDummy.updateMatrix();
+        plumeMeshRef.current.setMatrixAt(index, plumeDummy.matrix);
+      }
     });
 
     meshRef.current.count = count;
@@ -82,6 +101,11 @@ const VolcanicVents = () => {
       ringMeshRef.current.count = count;
       ringMeshRef.current.instanceMatrix.needsUpdate = true;
       if (ringMeshRef.current.instanceColor) ringMeshRef.current.instanceColor.needsUpdate = true;
+    }
+
+    if (plumeMeshRef.current) {
+      plumeMeshRef.current.count = count;
+      plumeMeshRef.current.instanceMatrix.needsUpdate = true;
     }
     
   }, [volcanoes, count]);
@@ -115,6 +139,20 @@ const VolcanicVents = () => {
           emissiveIntensity={3} 
           toneMapped={false} 
           color="#000000"
+        />
+      </instancedMesh>
+
+      {/* Rising plumes */}
+      <instancedMesh ref={plumeMeshRef} args={[null, null, 100]}>
+        <cylinderGeometry args={[0.05, 0.12, 0.8, 6]} />
+        <meshStandardMaterial
+          color="#ffaa55"
+          transparent
+          opacity={0.35}
+          emissive="#ffaa55"
+          emissiveIntensity={1.5}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
         />
       </instancedMesh>
     </group>

@@ -103,8 +103,11 @@ const EarthVisualization = ({ audioEnabled, setAudioEnabled }) => {
           className="audio-toggle"
           onClick={() => setAudioEnabled(!audioEnabled)}
         >
-          {audioEnabled ? '■ Audio: ON' : '▶ Audio: OFF'}
+          {audioEnabled ? '■ Mute Earth Voice' : '▶ Enable Earth Voice'}
         </button>
+        {!audioEnabled && (
+          <p className="audio-hint">Headphones recommended. Audio starts after you click.</p>
+        )}
       </div>
     </div>
   );

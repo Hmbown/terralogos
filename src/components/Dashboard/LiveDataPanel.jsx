@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import useHVCStore from '../../core/store/useHVCStore';
 import DataTable from './DataTable';
 import HelpTooltip from '../Help/HelpTooltip';
@@ -6,12 +6,14 @@ import '../../styles/livedata.css';
 
 const LiveDataPanel = () => {
   const metrics = useHVCStore((state) => state.metrics);
+  const meta = useHVCStore((state) => state.meta);
   const [expandedSections, setExpandedSections] = useState({
     seismic: true,
     solar: true,
     climate: true,
     volcanic: true,
   });
+  const sourceMeta = useMemo(() => meta?.sources || {}, [meta]);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -98,7 +100,44 @@ const LiveDataPanel = () => {
     return `https://earthquake.usgs.gov/earthquakes/eventpage/${event.id}`;
   };
 
-  const Section = ({ id, title, helpContent, sourceLink, children, collapsible = true }) => {
+  const formatRelative = (timestamp) => {
+    if (!timestamp) return null;
+    const delta = Date.now() - new Date(timestamp).getTime();
+    const minutes = Math.round(delta / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes === 1) return '1 min ago';
+    if (minutes < 60) return `${minutes} mins ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours === 1) return '1 hr ago';
+    if (hours < 24) return `${hours} hrs ago`;
+    const days = Math.round(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const SourceStatus = ({ status }) => {
+    if (!status) return null;
+    if (status.error) {
+      return <span className="source-status error">Error: {status.error}</span>;
+    }
+    if (status.status === 'empty') {
+      return <span className="source-status warning">No recent data</span>;
+    }
+    const updated =
+      status.updated || status.time_tag || status.date || status.timestamp;
+    if (updated) {
+      return (
+        <span className="source-status online">
+          Updated {formatRelative(updated)}
+        </span>
+      );
+    }
+    if (typeof status.kp === 'number') {
+      return <span className="source-status online">Online</span>;
+    }
+    return null;
+  };
+
+  const Section = ({ id, title, helpContent, sourceLink, status, children, collapsible = true }) => {
     const isExpanded = expandedSections[id];
     return (
       <div className={`data-section ${isExpanded ? 'expanded' : ''}`}>
@@ -127,6 +166,11 @@ const LiveDataPanel = () => {
               {sourceLink.label} →
             </a>
           )}
+          {status && (
+            <span className="section-status">
+              <SourceStatus status={status} />
+            </span>
+          )}
           {collapsible && (
             <span className="section-toggle">{isExpanded ? '−' : '+'}</span>
           )}
@@ -154,11 +198,12 @@ const LiveDataPanel = () => {
       <Section
         id="seismic"
         title="Seismic Activity"
-        helpContent="Real-time earthquake data from the USGS. Shows the most recent earthquake with magnitude 2.5 or greater detected in the last hour."
+        helpContent="Real-time earthquake data from the USGS. Epicenters drive the crust halo and trigger seismic pings inside the Resonance Chamber."
         sourceLink={{
           url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_hour.geojson",
           label: "USGS API"
         }}
+        status={sourceMeta.seismic}
       >
         {(() => {
           const event = metrics.lastSeismicEvent;
@@ -204,11 +249,12 @@ const LiveDataPanel = () => {
       <Section
         id="solar"
         title="Solar Activity"
-        helpContent="Solar X-ray flux, solar wind speed, and proton flux data from NOAA's Space Weather Prediction Center. Higher flare classes (M, X) can cause geomagnetic storms."
+        helpContent="NOAA solar telemetry feeds the mantle waveguide colors and modulates the heliophonic drone (faster wind = brighter, louder)."
         sourceLink={{
           url: "https://www.swpc.noaa.gov/",
           label: "NOAA SWPC"
         }}
+        status={sourceMeta.solar}
       >
         {metrics.solar ? (
           <DataTable
@@ -243,11 +289,12 @@ const LiveDataPanel = () => {
       <Section
         id="volcanic"
         title="Volcanic Activity"
-        helpContent="Elevated volcano alerts from the USGS Volcano Notification Service. Shows volcanoes with Orange or Red alert levels indicating active or imminent eruptions."
+        helpContent="USGS volcano alerts animate plume columns on the surface and deepen the seismic reverb bed as unrest increases."
         sourceLink={{
           url: "https://volcanoes.usgs.gov/hans-public/",
           label: "USGS VNS"
         }}
+        status={sourceMeta.volcanoes}
       >
         {(() => {
           const tableData = getVolcanoTableData();
@@ -270,11 +317,12 @@ const LiveDataPanel = () => {
       <Section
         id="climate"
         title="Climate & Atmosphere"
-        helpContent="Atmospheric CO₂ measurements from Mauna Loa Observatory and surface temperature data. These metrics track long-term climate trends."
+        helpContent="Mauna Loa CO₂ + temperature readings tint the ionosphere shader and swell the atmospheric noise layer."
         sourceLink={{
           url: "https://gml.noaa.gov/ccgg/trends/",
           label: "NOAA GML"
         }}
+        status={sourceMeta.climate}
       >
         {getClimateTableData().length > 0 ? (
           <DataTable

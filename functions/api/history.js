@@ -26,10 +26,10 @@ export async function onRequest(context) {
         SELECT 
           strftime('%Y-%m-%d %H:00:00', snapshot_time) as time_bucket,
           COUNT(*) as count,
-          json_extract(payload, '$.metrics.coreLoad') as avg_core_load,
-          json_extract(payload, '$.metrics.solar.windSpeed') as avg_solar_wind,
-          json_extract(payload, '$.metrics.crustTemp') as avg_temp,
-          json_extract(payload, '$.metrics.atmosphere.co2') as avg_co2
+          AVG(CAST(json_extract(payload, '$.metrics.coreLoad') AS REAL)) as avg_core_load,
+          AVG(CAST(json_extract(payload, '$.metrics.solar.windSpeed') AS REAL)) as avg_solar_wind,
+          AVG(CAST(json_extract(payload, '$.metrics.crustTemp') AS REAL)) as avg_temp,
+          AVG(CAST(json_extract(payload, '$.metrics.atmosphere.co2') AS REAL)) as avg_co2
         FROM metric_history
         WHERE snapshot_time >= ? AND snapshot_time <= ?
         GROUP BY time_bucket

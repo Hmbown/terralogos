@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import useHVCStore from '../../core/store/useHVCStore';
 import '../../styles/history.css';
 
@@ -13,7 +13,6 @@ const TemporalMemory = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewMode, setViewMode] = useState('streams'); // 'streams' or 'heatmap'
-  const svgRef = useRef(null);
 
   useEffect(() => {
     fetchHistory();
@@ -31,7 +30,7 @@ const TemporalMemory = () => {
       const response = await fetch(`/api/history?${params}`);
       if (!response.ok) throw new Error('Failed to fetch history');
       const data = await response.json();
-      setHistory(data.data || [], data.pagination);
+      setHistory(data.data || [], data.pagination, data.filters);
     } catch (err) {
       setHistoryError(err.message);
     }
@@ -100,10 +99,18 @@ const TemporalMemory = () => {
   };
 
   const renderStreams = () => {
-    if (!svgRef.current || streams.coreLoad.length === 0) return null;
+    const hasData =
+      streams.coreLoad.length ||
+      streams.solarWind.length ||
+      streams.temperature.length ||
+      streams.co2.length;
 
-    const width = svgRef.current.clientWidth || 800;
-    const height = 400;
+    if (!hasData) {
+      return <div className="no-data">No historical snapshots recorded for this range yet.</div>;
+    }
+
+    const width = 960;
+    const height = 420;
     const padding = { top: 40, right: 40, bottom: 60, left: 60 };
 
     const plotWidth = width - padding.left - padding.right;
@@ -112,17 +119,17 @@ const TemporalMemory = () => {
     const times = streams.coreLoad.map(s => s.time);
     const minTime = Math.min(...times);
     const maxTime = Math.max(...times);
-    const timeRange = maxTime - minTime;
+    const timeRange = Math.max(maxTime - minTime, 1);
 
     // Find value ranges
-    const allValues = [
+    const validValues = [
       ...streams.coreLoad.map(s => s.value),
       ...streams.solarWind.map(s => s.value),
       ...streams.temperature.map(s => s.value),
       ...streams.co2.map(s => s.value),
-    ];
-    const minValue = Math.min(...allValues.filter(v => !isNaN(v) && isFinite(v)));
-    const maxValue = Math.max(...allValues.filter(v => !isNaN(v) && isFinite(v)));
+    ].filter((v) => !isNaN(v) && isFinite(v));
+    const minValue = validValues.length ? Math.min(...validValues) : 0;
+    const maxValue = validValues.length ? Math.max(...validValues) : 1;
 
     const getX = (time) => padding.left + ((time - minTime) / timeRange) * plotWidth;
     const getY = (value) => padding.top + plotHeight - (normalizeValue(value, minValue, maxValue) * plotHeight);
@@ -136,7 +143,7 @@ const TemporalMemory = () => {
     };
 
     return (
-      <svg ref={svgRef} width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="temporal-svg">
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="temporal-svg">
         <defs>
           <linearGradient id="coreLoadGradient" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#00ff88" stopOpacity="0.8" />

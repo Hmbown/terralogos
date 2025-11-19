@@ -18,6 +18,9 @@ export const useEarthVoice = () => {
           ...payload.metrics,
           lastUpdated: payload.timestamp || new Date().toISOString(),
         },
+        meta: payload.meta
+          ? { ...payload.meta }
+          : { timestamp: payload.timestamp || new Date().toISOString() },
       }));
     };
 

@@ -13,6 +13,10 @@ const useHVCStore = create((set) => ({
     atmosphere: null,
     lastUpdated: null,
   },
+  meta: {
+    timestamp: null,
+    sources: {},
+  },
   
   // Historical data
   history: {
@@ -20,6 +24,7 @@ const useHVCStore = create((set) => ({
     loading: false,
     error: null,
     pagination: null,
+    filters: null,
   },
   
   // UI state
@@ -50,10 +55,11 @@ const useHVCStore = create((set) => ({
     selectedTimeRange: { start, end }
   }),
   
-  setHistory: (data, pagination) => set({
+  setHistory: (data, pagination, filters = null) => set({
     history: {
       data,
       pagination,
+      filters,
       loading: false,
       error: null,
     }

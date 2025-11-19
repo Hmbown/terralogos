@@ -139,6 +139,14 @@
   box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
 }
 
+.audio-hint {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #9fb3c8;
+  letter-spacing: 0.05em;
+}
+
 /* Mobile Responsive */
 @media (max-width: 1024px) {
   .dashboard-split {
