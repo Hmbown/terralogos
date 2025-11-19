@@ -6,9 +6,12 @@ import useHVCStore from '../../core/store/useHVCStore';
 import { useEarthVoice } from '../../core/hooks/useEarthVoice';
 
 // 3D Components
+import EarthGlobe from '../Hardware/EarthBase/EarthGlobe';
+import GridLines from '../Hardware/EarthBase/GridLines';
 import PlasmaTopology from '../Hardware/CoreMHD/PlasmaTopology';
 import WaveGuide from '../Hardware/MantleBus/WaveGuide';
 import PiezoHead from '../Hardware/CrustInterface/PiezoHead';
+import SeismicMarker from '../Hardware/CrustInterface/SeismicMarker';
 import VolcanicVents from '../Hardware/CrustInterface/VolcanicVents';
 import IonosphereCooling from '../Hardware/AtmosphereSink/IonosphereCooling';
 import ResonanceChamber from '../Hardware/Audio/ResonanceChamber';
@@ -26,6 +29,13 @@ const TerraLogosSystem = () => {
 
   return (
     <group>
+      {/* Base Earth Globe - provides geographic context */}
+      <EarthGlobe radius={4.2} />
+      
+      {/* Grid lines for orientation */}
+      <GridLines radius={4.25} />
+      
+      {/* Core and Mantle layers (internal, visible through transparency) */}
       <PlasmaTopology 
         systemLoad={metrics.coreLoad || 0} 
         radius={2.5} 
@@ -35,11 +45,18 @@ const TerraLogosSystem = () => {
         coreRadius={2.5}
         mantleDepth={1.5}
       />
+      
+      {/* Crust layer with seismic activity */}
       <PiezoHead 
         mantleRadius={4.0}
         crustDepth={0.2}
       />
+      
+      {/* Surface features */}
+      <SeismicMarker />
       <VolcanicVents />
+      
+      {/* Atmosphere layer */}
       <IonosphereCooling 
         systemTemp={metrics.crustTemp || 288}
         crustRadius={4.2}

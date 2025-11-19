@@ -31,24 +31,33 @@ const LiveDataPanel = () => {
 
   const getSeismicTableData = () => {
     if (!metrics.lastSeismicEvent) return [];
+    const event = metrics.lastSeismicEvent;
+    // Check if this is a placeholder/waiting state
+    const isPlaceholder = !event.id && (event.label === 'WAITING FOR SIGNAL...' || event.label === 'SIGNAL LOST' || event.label === 'NO RECENT EARTHQUAKES');
+    if (isPlaceholder) return [];
+    
     return [{
-      id: metrics.lastSeismicEvent.id || 'latest',
-      location: metrics.lastSeismicEvent.label || 'Unknown',
-      magnitude: metrics.lastSeismicEvent.magnitude ? metrics.lastSeismicEvent.magnitude.toFixed(1) : 'N/A',
-      time: metrics.lastSeismicEvent.timestamp ? formatTimestamp(metrics.lastSeismicEvent.timestamp) : 'Unknown',
-      raw: metrics.lastSeismicEvent,
+      id: event.id || 'latest',
+      location: event.label || 'Unknown',
+      magnitude: event.magnitude !== null && event.magnitude !== undefined ? event.magnitude.toFixed(1) : 'N/A',
+      time: event.timestamp ? formatTimestamp(event.timestamp) : 'Unknown',
+      raw: event,
     }];
   };
 
   const getVolcanoTableData = () => {
     if (!Array.isArray(metrics.volcanoes) || metrics.volcanoes.length === 0) return [];
-    return metrics.volcanoes.map(v => ({
-      id: v.id,
-      name: v.name || 'Unknown',
-      status: v.status || 'UNKNOWN',
-      location: `${v.lat?.toFixed(2) || 'N/A'}, ${v.lon?.toFixed(2) || 'N/A'}`,
-      raw: v,
-    }));
+    return metrics.volcanoes
+      .filter(v => v && (v.lat !== undefined && v.lon !== undefined))
+      .map(v => ({
+        id: v.id || `volcano-${v.lat}-${v.lon}`,
+        name: v.name || 'Unnamed Volcano',
+        status: v.status || 'UNKNOWN',
+        location: typeof v.lat === 'number' && typeof v.lon === 'number' 
+          ? `${v.lat.toFixed(2)}, ${v.lon.toFixed(2)}`
+          : 'N/A, N/A',
+        raw: v,
+      }));
   };
 
   const getSolarTableData = () => {
@@ -151,25 +160,45 @@ const LiveDataPanel = () => {
           label: "USGS API"
         }}
       >
-        {metrics.lastSeismicEvent ? (
-          <DataTable
-            data={getSeismicTableData()}
-            columns={[
-              { key: 'location', label: 'Location', sortable: true },
-              { key: 'magnitude', label: 'Magnitude', sortable: true },
-              { key: 'time', label: 'Time', sortable: true },
-            ]}
-            sourceLinks={{
-              location: (row) => getUSGSEventLink(row.raw)
-            }}
-            onRowClick={(row) => {
-              const link = getUSGSEventLink(row.raw);
-              if (link) window.open(link, '_blank');
-            }}
-          />
-        ) : (
-          <div className="no-data">Waiting for seismic data...</div>
-        )}
+        {(() => {
+          const event = metrics.lastSeismicEvent;
+          const isPlaceholder = event && (event.label === 'WAITING FOR SIGNAL...' || event.label === 'SIGNAL LOST' || event.label === 'NO RECENT EARTHQUAKES');
+          const tableData = getSeismicTableData();
+          
+          if (isPlaceholder) {
+            return (
+              <div className="no-data">
+                {event.label === 'NO RECENT EARTHQUAKES' 
+                  ? 'No earthquakes with magnitude 2.5+ detected in the last hour.'
+                  : event.label === 'SIGNAL LOST'
+                  ? 'Unable to connect to USGS seismic feed. Please check your connection.'
+                  : 'Waiting for seismic data...'}
+              </div>
+            );
+          }
+          
+          if (tableData.length > 0) {
+            return (
+              <DataTable
+                data={tableData}
+                columns={[
+                  { key: 'location', label: 'Location', sortable: true },
+                  { key: 'magnitude', label: 'Magnitude', sortable: true },
+                  { key: 'time', label: 'Time', sortable: true },
+                ]}
+                sourceLinks={{
+                  location: (row) => getUSGSEventLink(row.raw)
+                }}
+                onRowClick={(row) => {
+                  const link = getUSGSEventLink(row.raw);
+                  if (link) window.open(link, '_blank');
+                }}
+              />
+            );
+          }
+          
+          return <div className="no-data">Waiting for seismic data...</div>;
+        })()}
       </Section>
 
       <Section
@@ -220,18 +249,22 @@ const LiveDataPanel = () => {
           label: "USGS VNS"
         }}
       >
-        {metrics.volcanoes && metrics.volcanoes.length > 0 ? (
-          <DataTable
-            data={getVolcanoTableData()}
-            columns={[
-              { key: 'name', label: 'Volcano Name', sortable: true },
-              { key: 'status', label: 'Alert Level', sortable: true },
-              { key: 'location', label: 'Coordinates', sortable: true },
-            ]}
-          />
-        ) : (
-          <div className="no-data">No elevated volcano alerts at this time.</div>
-        )}
+        {(() => {
+          const tableData = getVolcanoTableData();
+          if (tableData.length > 0) {
+            return (
+              <DataTable
+                data={tableData}
+                columns={[
+                  { key: 'name', label: 'Volcano Name', sortable: true },
+                  { key: 'status', label: 'Alert Level', sortable: true },
+                  { key: 'location', label: 'Coordinates', sortable: true },
+                ]}
+              />
+            );
+          }
+          return <div className="no-data">No elevated volcano alerts (Orange/Red) at this time.</div>;
+        })()}
       </Section>
 
       <Section

@@ -24,11 +24,25 @@ export const useEarthVoice = () => {
     const requestSnapshot = async () => {
       try {
         const res = await fetch(SNAPSHOT_ENDPOINT);
-        if (!res.ok) throw new Error('Snapshot fetch failed');
+        if (!res.ok) {
+          console.error('[SYS] SNAPSHOT HTTP ERROR', res.status, res.statusText);
+          throw new Error(`Snapshot fetch failed: ${res.status}`);
+        }
         const data = await res.json();
-        applySnapshot(data);
+        if (data && data.metrics) {
+          applySnapshot(data);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[SYS] SNAPSHOT APPLIED', {
+              seismic: data.metrics.lastSeismicEvent?.label || 'none',
+              volcanoes: data.metrics.volcanoes?.length || 0,
+              solar: data.metrics.solar?.class || 'none',
+            });
+          }
+        } else {
+          console.warn('[SYS] SNAPSHOT INVALID DATA', data);
+        }
       } catch (err) {
-        console.error('[SYS] SNAPSHOT FAILURE', err);
+        console.error('[SYS] SNAPSHOT FAILURE', err.message);
       }
     };
 
@@ -58,13 +72,15 @@ export const useEarthVoice = () => {
 
       eventSource.addEventListener('snapshot', handleSnapshot);
       eventSource.addEventListener('status', (event) => {
-        console.log('[SYS] STREAM STATUS', event.data);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[SYS] STREAM STATUS', event.data);
+        }
       });
       eventSource.addEventListener('heartbeat', () => {
         // heartbeat keeps the connection warm
       });
       eventSource.addEventListener('error', (event) => {
-        console.warn('[SYS] STREAM ERROR', event.data);
+        console.warn('[SYS] STREAM DATA ERROR', event.data);
       });
 
       eventSource.onopen = () => {
@@ -72,7 +88,8 @@ export const useEarthVoice = () => {
         stopFallback();
       };
 
-      eventSource.onerror = () => {
+      eventSource.onerror = (err) => {
+        console.warn('[SYS] STREAM CONNECTION ERROR', err);
         if (eventSource) {
           eventSource.close();
           eventSource = null;
@@ -81,6 +98,7 @@ export const useEarthVoice = () => {
         if (!reconnectTimer) {
           reconnectTimer = setTimeout(() => {
             reconnectTimer = null;
+            console.log('[SYS] RECONNECTING STREAM...');
             connect();
           }, 10000);
         }

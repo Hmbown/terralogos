@@ -42,9 +42,22 @@ const getStormLevel = (flux) => {
 };
 
 export async function fetchSeismicFeed() {
-  const response = await fetch(USGS_SEISMIC_URL);
-  if (!response.ok) throw new Error('USGS seismic feed unavailable');
-  return response.json();
+  try {
+    const response = await fetch(USGS_SEISMIC_URL);
+    if (!response.ok) {
+      console.error('[TELEMETRY] USGS seismic feed HTTP error:', response.status, response.statusText);
+      throw new Error(`USGS seismic feed unavailable: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data || !data.features) {
+      console.warn('[TELEMETRY] USGS seismic feed returned invalid data structure');
+      throw new Error('USGS seismic feed returned invalid data');
+    }
+    return data;
+  } catch (err) {
+    console.error('[TELEMETRY] USGS seismic feed fetch failed:', err.message);
+    throw err;
+  }
 }
 
 export function extractLatestSeismicEvent(data) {
@@ -53,10 +66,21 @@ export function extractLatestSeismicEvent(data) {
     return null;
   }
   const latest = features[0];
+  if (!latest || !latest.geometry || !latest.properties) {
+    console.warn('[TELEMETRY] Invalid seismic event structure');
+    return null;
+  }
   const coords = latest.geometry?.coordinates || [];
   const magnitude = latest.properties?.mag ?? 0;
   const label = latest.properties?.place || 'UNREGISTERED SIGNAL';
   const [lon = 0, lat = 0] = coords;
+  
+  // Validate coordinates
+  if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+    console.warn('[TELEMETRY] Invalid seismic coordinates:', { lat, lon });
+    return null;
+  }
+  
   const pos = sphericalToCartesian(lat, lon);
   const intensity = clamp((magnitude - 2.0) / 7.0, 0, 1);
   return {
@@ -143,23 +167,42 @@ export async function fetchKpIndex() {
 }
 
 export async function fetchVolcanoFeed() {
-  const response = await fetch(USGS_VOLCANO_URL);
-  if (!response.ok) throw new Error(`USGS volcano API error: ${response.status}`);
-  const data = await response.json();
-  return data
-    .filter((v) => v?.color_code === 'ORANGE' || v?.color_code === 'RED')
-    .map((v) => {
-      const lat = parseFloat(v.lat);
-      const lon = parseFloat(v.lon);
-      return {
-        id: v.vnum,
-        name: v.v_name,
-        status: v.color_code,
-        lat,
-        lon,
-        pos: sphericalToCartesian(lat, lon),
-      };
-    });
+  try {
+    const response = await fetch(USGS_VOLCANO_URL);
+    if (!response.ok) {
+      console.error('[TELEMETRY] USGS volcano API HTTP error:', response.status, response.statusText);
+      throw new Error(`USGS volcano API error: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!Array.isArray(data)) {
+      console.warn('[TELEMETRY] USGS volcano API returned non-array data');
+      return [];
+    }
+    const volcanoes = data
+      .filter((v) => v && (v.color_code === 'ORANGE' || v.color_code === 'RED'))
+      .map((v) => {
+        const lat = parseFloat(v.lat);
+        const lon = parseFloat(v.lon);
+        if (isNaN(lat) || isNaN(lon)) {
+          console.warn('[TELEMETRY] Invalid volcano coordinates:', v);
+          return null;
+        }
+        return {
+          id: v.vnum || `volcano-${lat}-${lon}`,
+          name: v.v_name || 'Unknown Volcano',
+          status: v.color_code || 'UNKNOWN',
+          lat,
+          lon,
+          pos: sphericalToCartesian(lat, lon),
+        };
+      })
+      .filter(v => v !== null);
+    console.log(`[TELEMETRY] Fetched ${volcanoes.length} elevated volcanoes`);
+    return volcanoes;
+  } catch (err) {
+    console.error('[TELEMETRY] USGS volcano feed fetch failed:', err.message);
+    throw err;
+  }
 }
 
 export async function fetchLatestCO2() {
@@ -202,16 +245,39 @@ export async function fetchWeatherSample() {
 export async function gatherTelemetrySnapshot() {
   const timestamp = new Date().toISOString();
   const [seismicFeed, kp, solarPacket, volcanoes, climate, weather] = await Promise.all([
-    fetchSeismicFeed().catch((err) => ({ error: err.message })),
-    fetchKpIndex().catch((err) => ({ error: err.message })),
-    fetchSolarPacket().catch((err) => ({ error: err.message })),
-    fetchVolcanoFeed().catch((err) => ({ error: err.message })),
-    fetchLatestCO2().catch((err) => ({ error: err.message })),
-    fetchWeatherSample().catch((err) => ({ error: err.message })),
+    fetchSeismicFeed().catch((err) => {
+      console.error('[TELEMETRY] Seismic feed error:', err.message);
+      return { error: err.message };
+    }),
+    fetchKpIndex().catch((err) => {
+      console.error('[TELEMETRY] K-index error:', err.message);
+      return { error: err.message };
+    }),
+    fetchSolarPacket().catch((err) => {
+      console.error('[TELEMETRY] Solar packet error:', err.message);
+      return { error: err.message };
+    }),
+    fetchVolcanoFeed().catch((err) => {
+      console.error('[TELEMETRY] Volcano feed error:', err.message);
+      return { error: err.message };
+    }),
+    fetchLatestCO2().catch((err) => {
+      console.error('[TELEMETRY] CO2 feed error:', err.message);
+      return { error: err.message };
+    }),
+    fetchWeatherSample().catch((err) => {
+      console.error('[TELEMETRY] Weather sample error:', err.message);
+      return { error: err.message };
+    }),
   ]);
 
-  const seismicEvent = seismicFeed?.error ? null : extractLatestSeismicEvent(seismicFeed);
-  const volcanoPayload = Array.isArray(volcanoes) ? volcanoes : [];
+  // Check if seismic feed is empty (no recent earthquakes) vs error
+  const hasSeismicError = seismicFeed?.error;
+  const hasSeismicData = !hasSeismicError && seismicFeed?.features;
+  const isSeismicEmpty = hasSeismicData && (!Array.isArray(seismicFeed.features) || seismicFeed.features.length === 0);
+  
+  const seismicEvent = hasSeismicError || isSeismicEmpty ? null : extractLatestSeismicEvent(seismicFeed);
+  const volcanoPayload = Array.isArray(volcanoes) ? volcanoes : (volcanoes?.error ? [] : []);
   const solarTelemetry = solarPacket?.solar ? solarPacket : null;
 
   const metrics = {
@@ -223,7 +289,9 @@ export async function gatherTelemetrySnapshot() {
       seismicEvent || {
         pos: [1, 0, 0],
         intensity: 0,
-        label: seismicFeed?.error ? 'SIGNAL LOST' : 'WAITING FOR SIGNAL...'
+        magnitude: null,
+        label: hasSeismicError ? 'SIGNAL LOST' : isSeismicEmpty ? 'NO RECENT EARTHQUAKES' : 'WAITING FOR SIGNAL...',
+        timestamp: null,
       },
     volcanoes: volcanoPayload,
     solar: solarTelemetry?.solar || { flux: 0, class: 'A', windSpeed: 0, protonLevel: 'None' },
@@ -236,12 +304,18 @@ export async function gatherTelemetrySnapshot() {
   const meta = {
     timestamp,
     sources: {
-      seismic: seismicFeed?.error ? { error: seismicFeed.error } : { updated: seismicEvent?.timestamp },
-      kp,
-      solar: solarTelemetry?.solar?.timestamps || null,
-      volcanoes: { count: volcanoPayload.length },
-      climate,
-      weather: weather ? { source: weather.source, updated: timestamp } : null,
+      seismic: hasSeismicError 
+        ? { error: seismicFeed.error } 
+        : isSeismicEmpty 
+          ? { status: 'empty', message: 'No recent earthquakes' }
+          : { updated: seismicEvent?.timestamp },
+      kp: kp?.error ? { error: kp.error } : kp,
+      solar: solarTelemetry?.solar?.timestamps || (solarPacket?.error ? { error: solarPacket.error } : null),
+      volcanoes: volcanoes?.error 
+        ? { error: volcanoes.error, count: 0 } 
+        : { count: volcanoPayload.length },
+      climate: climate?.error ? { error: climate.error } : climate,
+      weather: weather?.error ? { error: weather.error } : (weather ? { source: weather.source, updated: timestamp } : null),
     },
   };
 
