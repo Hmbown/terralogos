@@ -372,13 +372,13 @@ export async function persistSnapshot(env, snapshot) {
 export async function readLatestSnapshot(env) {
   if (!env || !env.TERRA_DB) return null;
   try {
-    const row = await env.TERRA_DB.prepare(
+  const row = await env.TERRA_DB.prepare(
       'SELECT payload, updated_at FROM metric_cache WHERE key = ?'
-    )
-      .bind('latest')
-      .first();
+  )
+    .bind('latest')
+    .first();
       
-    if (!row || !row.payload) return null;
+  if (!row || !row.payload) return null;
     
     const data = JSON.parse(row.payload);
     // Ensure timestamp is preserved from the cache record if missing in payload (though it should be there)

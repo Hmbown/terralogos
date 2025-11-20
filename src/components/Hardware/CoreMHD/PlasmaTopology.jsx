@@ -124,13 +124,13 @@ const PlasmaTopology = ({
 
   return (
     <group>
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[radius, 128, 128]} />
-        <mHDMaterial 
-          ref={materialRef} 
-          transparent={false}
-        />
-      </mesh>
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[radius, 128, 128]} />
+      <mHDMaterial 
+        ref={materialRef} 
+        transparent={false}
+      />
+    </mesh>
       {/* Field Lines extending outward */}
       <Magnetosphere intensity={0.5 + systemLoad * 0.5} />
     </group>
